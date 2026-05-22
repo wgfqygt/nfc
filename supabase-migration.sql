@@ -46,6 +46,12 @@ CREATE POLICY "owner_manage_shops" ON shops
   FOR ALL USING (auth.uid() = owner_id)
   WITH CHECK (auth.uid() = owner_id);
 
+-- 管理员可更新所有店铺（上下架等）
+CREATE POLICY "admin_update_all_shops" ON shops
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin')
+  );
+
 -- 5. 通过店铺关联管理评价
 CREATE POLICY "owner_manage_reviews" ON reviews
   FOR ALL USING (
