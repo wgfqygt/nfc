@@ -136,7 +136,7 @@
 
   // ═══ 店铺列表 ═══
   async function loadShops() {
-    const { data: shops, error } = await supabase
+    const { data: shops, error } = await db
       .from('shops')
       .select('*')
       .order('updated_at', { ascending: false });
@@ -187,7 +187,7 @@
 
   // ═══ 编辑器 - 加载店铺 ═══
   async function loadShop(id) {
-    const { data: shop, error } = await supabase
+    const { data: shop, error } = await db
       .from('shops')
       .select('*')
       .eq('id', id)
@@ -199,14 +199,14 @@
     }
 
     // 加载评价
-    const { data: reviews } = await supabase
+    const { data: reviews } = await db
       .from('reviews')
       .select('*')
       .eq('shop_id', id)
       .order('sort_order');
 
     // 加载图片
-    const { data: images } = await supabase
+    const { data: images } = await db
       .from('images')
       .select('*')
       .eq('shop_id', id)
@@ -306,7 +306,7 @@
           return;
         }
 
-        const { data: newShop, error: insertErr } = await supabase
+        const { data: newShop, error: insertErr } = await db
           .from('shops')
           .insert({
             slug, name, rating, avg_price: avgPrice,
@@ -324,7 +324,7 @@
         $('#btnDelete').style.display = '';
         $('#editorTitle').textContent = '编辑店铺';
       } else {
-        const { error: updateErr } = await supabase
+        const { error: updateErr } = await db
           .from('shops')
           .update({
             slug, name, rating, avg_price: avgPrice,
@@ -361,7 +361,7 @@
 
   async function saveImages(shopId, slug) {
     // 获取旧图片记录
-    const { data: oldImages } = await supabase
+    const { data: oldImages } = await db
       .from('images')
       .select('id, file_path')
       .eq('shop_id', shopId);
@@ -426,7 +426,7 @@
 
     try {
       // 删除 storage 中的图片
-      const { data: images } = await supabase
+      const { data: images } = await db
         .from('images')
         .select('file_path')
         .eq('shop_id', currentShop.id);
