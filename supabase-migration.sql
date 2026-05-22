@@ -133,3 +133,16 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 13. 店铺上下架
 ALTER TABLE shops ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+
+-- 14. 用户扩展信息（手机号等）
+CREATE TABLE IF NOT EXISTS user_profiles (
+  user_id UUID REFERENCES auth.users(id) PRIMARY KEY,
+  phone TEXT,
+  email TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "user_manage_own_profile" ON user_profiles FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "admin_read_all_profiles" ON user_profiles FOR SELECT USING (
+  EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin')
+);

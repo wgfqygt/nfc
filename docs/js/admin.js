@@ -60,12 +60,17 @@
   async function handleSignup() {
     const email = $('#authEmail').value.trim();
     const password = $('#authPassword').value;
+    const phone = $('#authPhone').value.trim();
     if (!email || !password) {
       showAuthError('请填写邮箱和密码');
       return;
     }
     if (password.length < 6) {
       showAuthError('密码至少需要 6 位');
+      return;
+    }
+    if (!phone || !/^1\d{10}$/.test(phone)) {
+      showAuthError('请填写正确的11位手机号');
       return;
     }
 
@@ -75,6 +80,8 @@
       showAuthError(error.message.includes('already registered')
         ? '该邮箱已注册，请直接登录' : error.message);
     } else {
+      // 保存用户扩展信息
+      await db.from('user_profiles').upsert({ user_id: data.user.id, email, phone });
       // 分配 merchant 角色
       await db.rpc('assign_merchant_role');
       showToast('注册成功！已自动登录', true);
@@ -181,6 +188,20 @@
       return;
     }
 
+    // 管理员加载商家联系方式
+    if (isAdmin && shops && shops.length > 0) {
+      const ownerIds = [...new Set(shops.map(s => s.owner_id))];
+      const { data: profiles } = await db.from('user_profiles')
+        .select('user_id, email, phone')
+        .in('user_id', ownerIds);
+      const profileMap = {};
+      (profiles || []).forEach(p => { profileMap[p.user_id] = p; });
+      shops.forEach(s => {
+        s._email = (profileMap[s.owner_id] || {}).email || '';
+        s._phone = (profileMap[s.owner_id] || {}).phone || '';
+      });
+    }
+
     renderShopList(shops || []);
   }
 
@@ -214,7 +235,7 @@
         ? `<button class="shop-toggle-btn" data-id="${shop.id}" data-active="${shop.is_active}" data-name="${escapeHtml(shop.name)}" style="flex-shrink:0;padding:6px 12px;border:1.5px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;white-space:nowrap;">${shop.is_active ? '下架' : '上架'}</button>`
         : '';
       const ownerLine = isAdmin
-        ? `<span style="font-size:11px;color:#bbb;">商家: ${ownerShort}…</span>`
+        ? `<span style="font-size:11px;color:#999;">📧 ${escapeHtml(shop._email || ownerShort + '…')}  📱 ${escapeHtml(shop._phone || '未填')}</span>`
         : '';
       return `
       <div class="shop-card" data-id="${shop.id}" style="${dimmed}">
