@@ -101,7 +101,7 @@ CREATE TABLE shop_keys (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   code TEXT UNIQUE NOT NULL,
   is_used BOOLEAN DEFAULT false,
-  used_for_shop_id UUID REFERENCES shops(id),
+  used_for_shop_id UUID REFERENCES shops(id) ON DELETE SET NULL,
   used_by UUID REFERENCES auth.users(id),
   used_at TIMESTAMPTZ,
   created_by UUID REFERENCES auth.users(id),
