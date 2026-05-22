@@ -282,7 +282,8 @@
       rating: shop.rating,
       avg_price: shop.avg_price,
       meituan_url: shop.meituan_url,
-      douyin_url: shop.douyin_url
+      douyin_url: shop.douyin_url,
+      is_active: shop.is_active
     }, false);
 
     // 渲染文案
