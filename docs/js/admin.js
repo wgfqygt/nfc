@@ -537,6 +537,62 @@
     return d.innerHTML;
   }
 
+  // ═══ 一键导入 ggb 店铺 ═══
+  async function importGgbShop() {
+    $('#btnImportGgb').textContent = '导入中...';
+    $('#btnImportGgb').disabled = true;
+
+    try {
+      // 获取 ggb 静态配置
+      const res = await fetch('shops/ggb/config.json');
+      if (!res.ok) throw new Error('ggb 配置文件加载失败');
+      const cfg = await res.json();
+
+      const { data: { user } } = await db.auth.getUser();
+      const userId = user.id;
+
+      // 检查是否已有 ggb 店铺
+      const { data: existing } = await db.from('shops').select('id').eq('slug', 'ggb').maybeSingle();
+      if (existing) {
+        showToast('ggb 店铺已存在，无需重复导入', false);
+        loadShops();
+        return;
+      }
+
+      // 创建店铺
+      const { data: shop, error: shopErr } = await db.from('shops').insert({
+        slug: 'ggb',
+        name: cfg.shop.name,
+        rating: cfg.shop.rating,
+        avg_price: cfg.shop.avgPrice,
+        meituan_url: (cfg.links || {}).meituanReview || '',
+        douyin_url: (cfg.links || {}).douyinReview || '',
+        owner_id: userId
+      }).select('id').single();
+
+      if (shopErr) throw shopErr;
+
+      // 导入评价文案
+      if (cfg.texts && cfg.texts.length > 0) {
+        const reviewRows = cfg.texts.map((text, i) => ({
+          shop_id: shop.id,
+          text,
+          sort_order: i
+        }));
+        await db.from('reviews').insert(reviewRows);
+      }
+
+      showToast('ggb 店铺导入成功！', true);
+      loadShops();
+    } catch (err) {
+      console.error('导入失败:', err);
+      showToast('导入失败: ' + (err.message || '未知错误'), false);
+    }
+
+    $('#btnImportGgb').textContent = '📥 一键导入 ggb 店铺（塔斯汀）';
+    $('#btnImportGgb').disabled = false;
+  }
+
   // ═══ 事件绑定 ═══
   $('#btnLogin').addEventListener('click', handleLogin);
   $('#btnSignup').addEventListener('click', handleSignup);
@@ -546,6 +602,7 @@
 
   $('#btnLogout').addEventListener('click', handleLogout);
   $('#btnNewShop').addEventListener('click', initNewShop);
+  $('#btnImportGgb').addEventListener('click', importGgbShop);
 
   $('#btnBack').addEventListener('click', () => { showDashboard(); loadShops(); });
   $('#btnSave').addEventListener('click', saveShop);
