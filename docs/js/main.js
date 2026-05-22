@@ -174,13 +174,11 @@
   }
 
   async function copyAndOpenDouyin(password) {
-    // 记住当前评价文案，后面要恢复
     const reviewText = shopConfig.texts[currentTextIdx];
 
     // 第一步：复制口令到剪贴板
     try {
       await navigator.clipboard.writeText(password);
-      showToast('口令已复制，正在打开抖音（6秒后自动恢复文案到剪贴板）');
     } catch {
       const ta = document.createElement('textarea');
       ta.value = password;
@@ -189,26 +187,69 @@
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      showToast('口令已复制，正在打开抖音...');
     }
 
-    // 第二步：尝试唤起抖音 App
+    showToast('口令已复制，正在打开抖音...');
+
+    // 第二步：打开抖音 App
     setTimeout(() => {
-      const scheme = 'snssdk1128://';
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
-      iframe.src = scheme;
+      iframe.src = 'snssdk1128://';
       document.body.appendChild(iframe);
       setTimeout(() => document.body.removeChild(iframe), 2000);
     }, 300);
 
-    // 第三步：6 秒后恢复评价文案到剪贴板
-    // 这时用户已进入抖音，点「写评价」就能粘贴
-    setTimeout(async () => {
+    // 第三步：注册一次性监听——用户切回浏览器时自动复制文案
+    const onVisible = async () => {
       try {
         await navigator.clipboard.writeText(reviewText);
-      } catch {/* 静默失败 */}
-    }, 6000);
+        showToast('✅ 评价文案已自动复制，请切回抖音粘贴发布');
+        $('#btnCopy').textContent = '✅ 文案已就绪';
+        $('#btnCopy').classList.add('btn-copied');
+      } catch {
+        // 降级：弹出醒目的复制提示
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;';
+        overlay.id = 'clipboard-helper';
+        overlay.innerHTML = `
+          <div style="background:#fff;border-radius:16px;padding:28px 24px;text-align:center;max-width:300px;">
+            <p style="font-size:18px;margin-bottom:6px;">📋</p>
+            <p style="font-size:16px;font-weight:600;margin-bottom:12px;">点击下方复制文案</p>
+            <p style="font-size:13px;color:#666;margin-bottom:20px;line-height:1.6;background:#fafafa;padding:12px;border-radius:8px;">${reviewText.slice(0, 100)}...</p>
+            <button id="btn-restore-text" style="width:100%;padding:14px;background:#FF6B35;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;">📋 复制后切回抖音粘贴</button>
+          </div>
+        `;
+        document.body.appendChild(overlay);
+
+        const restoreBtn = overlay.querySelector('#btn-restore-text');
+        restoreBtn.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(reviewText);
+          } catch {/* 静默 */}
+          document.body.removeChild(overlay);
+          showToast('已复制，切回抖音粘贴');
+        });
+
+        overlay.addEventListener('click', (e) => {
+          if (e.target === overlay) document.body.removeChild(overlay);
+        });
+      }
+    };
+
+    // 监听页面重新可见（用户从抖音切回来）
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        document.removeEventListener('visibilitychange', handleVisibility);
+        setTimeout(onVisible, 500); // 等浏览器稳定再执行
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // 兜底：30 秒后还没有切回来就取消监听
+    setTimeout(() => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+    }, 30000);
   }
 
   // ── Toast ──
