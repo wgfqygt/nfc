@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>店铺信息抓取工具</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:#f5f5f5;color:#1a1a1a;line-height:1.6;min-height:100vh;
+}
+header{
+  background:linear-gradient(135deg,#FF6B35,#FF8C00);color:#fff;padding:32px 20px;text-align:center;
+}
+header h1{font-size:22px;margin-bottom:8px;}
+header p{opacity:0.85;font-size:14px;}
+
+.container{max-width:700px;margin:0 auto;padding:20px;}
+
+.card{
+  background:#fff;border-radius:12px;padding:20px;margin-bottom:16px;
+  box-shadow:0 1px 4px rgba(0,0,0,0.06);
+}
+.card h2{font-size:16px;font-weight:600;margin-bottom:12px;}
+.card p{font-size:14px;color:#666;margin-bottom:10px;}
+
+/* bookmarklet button */
+.bookmarklet-box{
+  background:#FFF8F5;border:2px dashed var(--orange, #FF6B35);border-radius:12px;
+  padding:24px;text-align:center;margin:16px 0;
+}
+.bookmarklet-btn{
+  display:inline-block;padding:14px 32px;background:#FF6B35;color:#fff;
+  border-radius:10px;font-size:16px;font-weight:600;text-decoration:none;
+  cursor:move;user-select:none;-webkit-user-drag:element;
+  box-shadow:0 4px 12px rgba(255,107,53,0.3);
+  transition:transform .1s;
+}
+.bookmarklet-btn:hover{transform:scale(1.05);}
+.bookmarklet-btn:active{transform:scale(0.97);}
+
+.steps{list-style:none;counter-reset:step;}
+.steps li{counter-increment:step;padding-left:36px;position:relative;margin-bottom:16px;}
+.steps li::before{
+  content:counter(step);position:absolute;left:0;top:0;
+  width:24px;height:24px;background:#FF6B35;color:#fff;
+  border-radius:50%;font-size:13px;font-weight:700;text-align:center;line-height:24px;
+}
+
+.arrow{text-align:center;font-size:24px;color:#ccc;margin:8px 0;}
+
+.code-block{
+  background:#1e1e1e;color:#d4d4d4;padding:16px;border-radius:8px;
+  font-size:12px;font-family:"SF Mono","Fira Code","Consolas",monospace;
+  overflow-x:auto;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;
+}
+
+/* supported platforms */
+.platform-tag{
+  display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;margin:4px;
+}
+.tag-meituan{background:#FFF0E8;color:#FF6B35;}
+.tag-douyin{background:#f0f0f0;color:#1a1a1a;}
+
+/* test area */
+.test-area{margin-top:12px;}
+.test-area input{
+  width:100%;padding:10px 12px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:14px;
+}
+.test-area button{
+  margin-top:8px;padding:10px 20px;background:#333;color:#fff;border:none;
+  border-radius:8px;font-size:14px;cursor:pointer;
+}
+.test-result{
+  margin-top:12px;background:#fafafa;border-radius:8px;padding:14px;font-size:13px;
+  font-family:monospace;white-space:pre-wrap;max-height:300px;overflow-y:auto;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📎 店铺信息抓取工具</h1>
+  <p>在抖音/美团店铺页面点一下，自动提取信息填入管理后台</p>
+</header>
+
+<div class="container">
+
+  <!-- 安装方法 -->
+  <div class="card">
+    <h2>安装方法（30秒）</h2>
+    <ol class="steps">
+      <li>把下面这个橙色按钮<strong>拖到浏览器书签栏</strong></li>
+    </ol>
+
+    <div class="bookmarklet-box">
+      <a class="bookmarklet-btn" href="javascript:(function(){var d=document,t=d.title,b=d.body.innerText.replace(/\s+/g,' ').trim().slice(0,3000),u=location.href,admin='https://wgfqygt.github.io/nfc/admin.html';var p='url='+encodeURIComponent(u)+'&title='+encodeURIComponent(t)+'&text='+encodeURIComponent(b);var r=/\b\d+(\.\d+)?\s*分\b/g;var m=b.match(r);if(m){p+='&rating='+encodeURIComponent(m[0]);};var pm=/人均\s*[¥￥]?\s*(\d+)/g;var mm=pm.exec(b);if(mm){p+='&price='+mm[1];};location.href=admin+'?'+p;})();">
+        🖱 拖我到书签栏 → 抓取店铺信息
+      </a>
+    </div>
+
+    <p style="font-size:13px;color:#999;">如果书签栏没显示：Chrome 按 <code>Ctrl+Shift+B</code>，Edge 按 <code>Ctrl+Shift+B</code></p>
+
+    <div class="arrow">⬇</div>
+
+    <ol class="steps" start="2">
+      <li>打开抖音或美团的<strong>店铺页面</strong></li>
+      <li>点击书签栏里的 <strong>「抓取店铺信息」</strong></li>
+      <li>自动跳转到管理后台，信息已帮你填好</li>
+    </ol>
+  </div>
+
+  <!-- 支持哪些平台 -->
+  <div class="card">
+    <h2>支持抓取的平台</h2>
+    <div>
+      <span class="platform-tag tag-douyin">🎵 抖音店铺</span>
+      <span class="platform-tag tag-meituan">🛵 美团店铺</span>
+    </div>
+    <p style="margin-top:12px;font-size:13px;color:#666;">
+      在以上任意平台的<strong>店铺主页</strong>或<strong>团购评价页面</strong>点击书签即可。<br>
+      自动提取：店铺名称、评分、人均价格、页面链接。
+    </p>
+  </div>
+
+  <!-- 手动测试 -->
+  <div class="card">
+    <h2>测试：粘贴任意文字试试提取效果</h2>
+    <p style="font-size:13px;color:#666;">模拟从店铺页面抓取的文字，看看能提取出什么</p>
+    <div class="test-area">
+      <textarea id="testInput" rows="5" placeholder="粘贴一段包含店名、评分、价格的文字...">海底捞火锅(中关村店) 4.8分 人均 ¥120 锅底浓郁服务好</textarea>
+      <button onclick="runTest()">🔍 提取信息</button>
+      <div class="test-result" id="testResult"></div>
+    </div>
+  </div>
+
+  <!-- 抓取逻辑说明 -->
+  <div class="card">
+    <h2>它会抓取什么</h2>
+    <table style="width:100%;font-size:14px;border-collapse:collapse;">
+      <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:8px 0;color:#666;">📌 页面标题</td>
+        <td style="padding:8px 0;">→ 自动填入店铺名称</td>
+      </tr>
+      <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:8px 0;color:#666;">⭐ 评分数字</td>
+        <td style="padding:8px 0;">→ 自动填入评分（如 4.8分）</td>
+      </tr>
+      <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:8px 0;color:#666;">💰 人均价格</td>
+        <td style="padding:8px 0;">→ 自动填入价格（如 人均¥120）</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 0;color:#666;">🔗 页面链接</td>
+        <td style="padding:8px 0;">→ 自动填入评价跳转链接</td>
+      </tr>
+    </table>
+  </div>
+
+</div>
+
+<script>
+function runTest(){
+  const text = document.getElementById('testInput').value;
+  const result = document.getElementById('testResult');
+
+  // 模拟真实抓取逻辑
+  const extracted = {};
+
+  // 评分: X.X分 或 X.X 分
+  const ratingMatch = text.match(/(\d+(\.\d+)?)\s*分/);
+  if(ratingMatch) extracted['评分'] = ratingMatch[1] + '分';
+
+  // 人均
+  const priceMatch = text.match(/人均\s*[¥￥]?\s*(\d+)/);
+  if(priceMatch) extracted['人均'] = '¥' + priceMatch[1];
+
+  // 店名（取第一行，或包含"店"的行）
+  const lines = text.split(/[\n,，。]+/);
+  const nameCandidates = lines.filter(l => l.length >= 4 && l.length <= 30 && !l.includes('http') && l.trim());
+  if(nameCandidates.length > 0) extracted['推测店名'] = nameCandidates[0].trim();
+
+  if(Object.keys(extracted).length === 0){
+    result.innerHTML = '❌ 未提取到结构化信息，但页面标题和链接会保留';
+  }else{
+    result.innerHTML = '✅ 提取结果：\n' + JSON.stringify(extracted, null, 2);
+  }
+}
+
+// 页面加载时跑一次测试演示
+runTest();
+</script>
+
+</body>
+</html>

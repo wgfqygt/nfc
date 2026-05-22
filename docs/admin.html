@@ -406,6 +406,55 @@ function showToast(msg, success){
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
+// ── URL 参数自动填表（从书签抓取脚本跳转过来） ──
+function autoFillFromParams(){
+  const params = new URLSearchParams(location.search);
+  if(!params.has('url') && !params.has('title')) return; // 没有传入数据，跳过
+
+  const url = params.get('url') || '';
+  const title = params.get('title') || '';
+  const text = params.get('text') || '';
+  const rating = params.get('rating') || '';
+  const price = params.get('price') || '';
+
+  // 店名：去掉标题里的平台后缀
+  let name = title.replace(/\s*[-–|—]\s*(抖音|美团|大众点评|TikTok).*$/g, '').trim();
+  if(!name || name.length < 2) name = title; // 兜底用原标题
+
+  // 评分
+  let ratingVal = rating.replace('分','').trim();
+
+  // 平台判断 + 填链接
+  const isMeituan = /meituan|mei\w*\.com|大众点评|dianping/i.test(url);
+  const isDouyin = /douyin|snssdk/i.test(url);
+
+  // 填表
+  $('#shopName').value = name;
+  if(ratingVal) $('#shopRating').value = ratingVal;
+  if(price) $('#shopPrice').value = price;
+  if(url && isMeituan) $('#linkMeituan').value = url;
+  if(url && isDouyin) $('#linkDouyin').value = url;
+  if(url && !isMeituan && !isDouyin) {
+    // 不确定的平台，两个都填
+    $('#linkMeituan').value = url;
+    $('#linkDouyin').value = url;
+  }
+
+  // 自动生成 shopId：英文/拼音需要人工填，只做提示
+  // 用店名 hash 做个临时 id
+  let tmpId = 'shop-' + Math.abs(hashCode(name)).toString(36).slice(0,8);
+  $('#shopId').value = tmpId;
+  onShopIdChange();
+  $('#shopId').style.background = '#FFFDE8';
+  $('#shopId').title = '自动生成的临时ID，建议改为英文或拼音';
+
+  showToast(`已自动填入「${name}」的信息，请核对修改`, true);
+}
+
+function hashCode(s){var h=0;for(var i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return h;}
+
+autoFillFromParams();
+
 // 初始化：至少两条空文案
 addTextEntry();
 </script>
