@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>店铺管理 - 评价助手</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --orange:#FF6B35;--green:#07C160;--bg:#f5f5f5;--card:#fff;
+  --text:#1a1a1a;--text2:#666;--border:#e0e0e0;--radius:12px;
+}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;
+}
+/* header */
+.toolbar{
+  background:#1a1a1a;color:#fff;padding:12px 20px;
+  display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;
+}
+.toolbar h1{font-size:16px;font-weight:600;}
+.toolbar .actions{display:flex;gap:8px;}
+.toolbar button{
+  padding:8px 18px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;
+}
+.btn-export{background:var(--orange);color:#fff;}
+.btn-preview{background:#333;color:#fff;}
+
+/* layout */
+.container{max-width:700px;margin:0 auto;padding:20px;}
+
+/* sections */
+.section{
+  background:var(--card);border-radius:var(--radius);padding:20px;margin-bottom:16px;
+  box-shadow:0 1px 4px rgba(0,0,0,0.06);
+}
+.section h2{font-size:15px;font-weight:600;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+.section h2 span{font-size:12px;color:var(--text2);font-weight:400;margin-left:8px;}
+
+/* form */
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:4px;}
+.field input,.field textarea{
+  width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;
+  font-size:14px;font-family:inherit;transition:border-color .2s;background:#fafafa;
+}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--orange);background:#fff;}
+.field textarea{resize:vertical;min-height:80px;}
+
+.row{display:flex;gap:12px;}
+.row .field{flex:1;}
+
+/* text entries */
+.text-entry{
+  display:flex;gap:8px;align-items:flex-start;margin-bottom:10px;
+}
+.text-entry textarea{flex:1;min-height:60px;}
+.text-entry button{
+  flex-shrink:0;width:32px;height:32px;border:1.5px solid #e0e0e0;background:#fff;
+  border-radius:6px;cursor:pointer;font-size:16px;line-height:1;color:#999;
+}
+.text-entry button:hover{background:#fee;border-color:#e88;color:#e55;}
+.btn-add-text{
+  padding:8px 16px;border:1.5px dashed var(--border);background:none;border-radius:8px;
+  font-size:13px;cursor:pointer;color:var(--text2);width:100%;
+}
+.btn-add-text:hover{border-color:var(--orange);color:var(--orange);}
+
+/* image upload */
+.image-upload-area{
+  border:2px dashed var(--border);border-radius:var(--radius);padding:32px;
+  text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:12px;
+}
+.image-upload-area:hover,.image-upload-area.drag{border-color:var(--orange);background:#FFF8F5;}
+.image-upload-area p{color:var(--text2);font-size:13px;}
+
+.image-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;}
+.image-item{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:#f0f0f0;}
+.image-item img{width:100%;height:100%;object-fit:cover;}
+.image-item .remove{
+  position:absolute;top:4px;right:4px;width:24px;height:24px;
+  background:rgba(0,0,0,0.7);color:#fff;border:none;border-radius:50%;
+  font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
+
+/* id input */
+.shop-id-input{
+  display:flex;gap:8px;align-items:flex-end;
+}
+.shop-id-input .field:first-child{flex:1;}
+.shop-id-input .field:last-child{flex-shrink:0;}
+.shop-id-input input[readonly]{
+  background:#f5f5f5;color:var(--text2);cursor:pointer;user-select:all;
+}
+
+/* preview modal */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;
+  display:flex;align-items:center;justify-content:center;
+}
+.modal-overlay.hidden{display:none;}
+.modal-content{
+  background:#fff;border-radius:16px;width:375px;max-height:85vh;overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,0.3);
+}
+.modal-close{
+  position:sticky;top:0;background:#fff;padding:12px 16px;text-align:right;
+  border-bottom:1px solid #eee;
+}
+.modal-close button{border:none;background:none;font-size:20px;cursor:pointer;color:#999;}
+
+/* toast */
+.toast{
+  position:fixed;bottom:40px;left:50%;transform:translateX(-50%);
+  background:rgba(0,0,0,0.8);color:#fff;padding:10px 24px;border-radius:20px;
+  font-size:14px;z-index:300;pointer-events:none;
+}
+.toast.success{background:var(--green);}
+
+/* tips */
+.tip{font-size:12px;color:var(--text2);margin-top:4px;}
+
+@media(max-width:500px){
+  .container{padding:12px;}
+  .section{padding:16px;}
+  .row{flex-direction:column;gap:0;}
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>🏪 店铺管理</h1>
+  <div class="actions">
+    <button class="btn-preview" onclick="togglePreview()">👁 预览</button>
+    <button class="btn-export" onclick="doExport()">📦 导出配置</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 店铺ID -->
+  <div class="section">
+    <h2>店铺标识 <span>用于生成页面链接</span></h2>
+    <div class="shop-id-input">
+      <div class="field">
+        <label>店铺 ID（英文或拼音）</label>
+        <input id="shopId" type="text" placeholder="例如：haidilao-zhongguancun" oninput="onShopIdChange()">
+      </div>
+      <div class="field">
+        <label>预览链接</label>
+        <input id="shopUrl" type="text" readonly value="填写ID后自动生成" onclick="this.select()">
+      </div>
+    </div>
+  </div>
+
+  <!-- 基本信息 -->
+  <div class="section">
+    <h2>基本信息</h2>
+    <div class="row">
+      <div class="field">
+        <label>店铺名称</label>
+        <input id="shopName" type="text" placeholder="例如：海底捞火锅(中关村店)">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>评分</label>
+        <input id="shopRating" type="text" placeholder="例如：4.8">
+      </div>
+      <div class="field">
+        <label>人均价格 (¥)</label>
+        <input id="shopPrice" type="text" placeholder="例如：120">
+      </div>
+    </div>
+  </div>
+
+  <!-- 平台链接 -->
+  <div class="section">
+    <h2>评价跳转链接 <span>门店在平台的评价页地址</span></h2>
+    <div class="field">
+      <label>美团评价页链接</label>
+      <input id="linkMeituan" type="url" placeholder="粘贴美团店铺或评价页链接">
+      <p class="tip">从美团 App 打开店铺 → 分享 → 复制链接</p>
+    </div>
+    <div class="field">
+      <label>抖音评价页链接</label>
+      <input id="linkDouyin" type="url" placeholder="粘贴抖音店铺或团购评价页链接">
+      <p class="tip">从抖音 App 打开店铺 → 分享 → 复制链接</p>
+    </div>
+  </div>
+
+  <!-- 评价文案 -->
+  <div class="section">
+    <h2>评价文案 <span>多条随机展示，避免被判水军</span></h2>
+    <div id="textEntries">
+      <div class="text-entry">
+        <textarea placeholder="输入评价文案，建议准备3-5条语义不同但都正面的文案..."></textarea>
+        <button onclick="removeTextEntry(this)" title="删除">✕</button>
+      </div>
+    </div>
+    <button class="btn-add-text" onclick="addTextEntry()">+ 添加一条文案</button>
+  </div>
+
+  <!-- 配图上传 -->
+  <div class="section">
+    <h2>配图 <span>用户可保存到手机</span></h2>
+    <div class="image-upload-area" id="uploadArea" onclick="document.getElementById('imageInput').click()">
+      <p>📁 点击或拖拽图片到这里上传</p>
+      <p style="font-size:11px;color:#bbb;margin-top:4px;">建议 1:1 正方形，不超过 2MB</p>
+    </div>
+    <input type="file" id="imageInput" accept="image/*" multiple hidden onchange="handleImageSelect(event)">
+    <div class="image-list" id="imageList"></div>
+  </div>
+
+</div>
+
+<!-- 预览弹窗 -->
+<div class="modal-overlay hidden" id="previewModal">
+  <div class="modal-content">
+    <div class="modal-close">
+      <button onclick="togglePreview()">✕</button>
+    </div>
+    <iframe id="previewFrame" style="width:100%;height:75vh;border:none;"></iframe>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" style="display:none;"></div>
+
+<script>
+// ── 店铺 ID → 链接 ──
+function onShopIdChange(){
+  const id = $('#shopId').value.trim();
+  const urlInput = $('#shopUrl');
+  if(id){
+    urlInput.value = `https://wgfqygt.github.io/nfc/?shop=${id}`;
+  }else{
+    urlInput.value = '填写ID后自动生成';
+  }
+}
+
+// ── 文案增删 ──
+function addTextEntry(){
+  const div = document.createElement('div');
+  div.className = 'text-entry';
+  div.innerHTML = '<textarea placeholder="输入评价文案..."></textarea><button onclick="removeTextEntry(this)" title="删除">✕</button>';
+  $('#textEntries').appendChild(div);
+}
+
+function removeTextEntry(btn){
+  const entries = $$('#textEntries .text-entry');
+  if(entries.length <= 1) return; // 至少保留一条
+  btn.closest('.text-entry').remove();
+}
+
+// ── 图片上传 ──
+const imageStore = new Map(); // id → {file, dataUrl}
+
+function handleImageSelect(e){
+  const files = Array.from(e.target.files);
+  files.forEach(addImage);
+  e.target.value = '';
+}
+
+function addImage(file){
+  if(!file.type.startsWith('image/')) return;
+  const id = Date.now() + '_' + Math.random().toString(36).slice(2,6);
+  const reader = new FileReader();
+  reader.onload = () => {
+    imageStore.set(id, {file, dataUrl: reader.result});
+    renderImageList();
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImage(id){
+  imageStore.delete(id);
+  renderImageList();
+}
+
+function renderImageList(){
+  const list = $('#imageList');
+  list.innerHTML = '';
+  imageStore.forEach((v,id) => {
+    const item = document.createElement('div');
+    item.className = 'image-item';
+    item.innerHTML = `<img src="${v.dataUrl}" alt=""><button class="remove" onclick="removeImage('${id}')">✕</button>`;
+    list.appendChild(item);
+  });
+}
+
+// ── 拖拽上传 ──
+const uploadArea = document.getElementById('uploadArea');
+['dragenter','dragover','dragleave','drop'].forEach(evt => {
+  uploadArea.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); });
+});
+['dragenter','dragover'].forEach(evt => {
+  uploadArea.addEventListener(evt, () => uploadArea.classList.add('drag'));
+});
+['dragleave','drop'].forEach(evt => {
+  uploadArea.addEventListener(evt, () => uploadArea.classList.remove('drag'));
+});
+uploadArea.addEventListener('drop', e => {
+  Array.from(e.dataTransfer.files).forEach(addImage);
+});
+
+// ── 收集数据 ──
+function collectData(){
+  const shopId = $('#shopId').value.trim();
+  const texts = [];
+  $$('#textEntries textarea').forEach(ta => {
+    const v = ta.value.trim();
+    if(v) texts.push(v);
+  });
+  const images = [];
+  imageStore.forEach((v,id) => images.push({id, name: v.file.name}));
+
+  return {
+    shopId,
+    config: {
+      shop: {
+        name: $('#shopName').value.trim(),
+        rating: $('#shopRating').value.trim(),
+        avgPrice: $('#shopPrice').value.trim()
+      },
+      texts,
+      images: images.map(img => img.name),
+      links: {}
+    }
+  };
+}
+
+// ── 导出 ──
+async function doExport(){
+  const data = collectData();
+  if(!data.shopId){ alert('请先填写店铺 ID'); return; }
+  if(!data.config.shop.name){ alert('请填写店铺名称'); return; }
+  if(data.config.texts.length === 0){ alert('请至少填写一条评价文案'); return; }
+
+  // 把 platform links 加进去
+  const ml = $('#linkMeituan').value.trim();
+  const dl = $('#linkDouyin').value.trim();
+  if(ml) data.config.links.meituanReview = ml;
+  if(dl) data.config.links.douyinReview = dl;
+
+  // 生成 ZIP
+  const zip = new JSZip();
+  const folder = zip.folder(data.shopId);
+
+  // config.json
+  folder.file('config.json', JSON.stringify(data.config, null, 2));
+
+  // 图片
+  const imgFolder = folder.folder('images');
+  const imgPromises = [];
+  imageStore.forEach((v, id) => {
+    imgPromises.push(
+      fetch(v.dataUrl).then(r => r.blob()).then(blob => {
+        imgFolder.file(v.file.name, blob);
+      })
+    );
+  });
+  await Promise.all(imgPromises);
+
+  const zipBlob = await zip.generateAsync({type:'blob'});
+  const url = URL.createObjectURL(zipBlob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${data.shopId}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  showToast('已导出！解压后放到 docs/shops/ 下即可', true);
+}
+
+// ── 预览 ──
+function togglePreview(){
+  const modal = $('#previewModal');
+  if(modal.classList.contains('hidden')){
+    // 先把当前数据写入 sessionStorage 供预览用
+    const data = collectData();
+    sessionStorage.setItem('admin_preview', JSON.stringify(data));
+    modal.classList.remove('hidden');
+    // 用当前用户端页面作为预览框架，传入 preview 模式
+    $('#previewFrame').src = `./?shop=demo&preview=1`;
+  }else{
+    modal.classList.add('hidden');
+  }
+}
+
+// ── Toast ──
+function showToast(msg, success){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = success ? 'toast success' : 'toast';
+  t.style.display = 'block';
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.style.display = 'none', 2500);
+}
+
+// ── 快捷键 ──
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+// 初始化：至少两条空文案
+addTextEntry();
+</script>
+
+<!-- JSZip CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+</body>
+</html>
