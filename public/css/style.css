@@ -1,0 +1,287 @@
+/* ===== Reset & Base ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --orange: #FF6B35;
+  --orange-light: #FFF0E8;
+  --green: #07C160;
+  --text: #1a1a1a;
+  --text-secondary: #666;
+  --bg: #f5f5f5;
+  --card-bg: #fff;
+  --radius: 16px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* ===== Layout ===== */
+main {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 32px;
+}
+
+/* ===== Loading & Error ===== */
+.loading, .error {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid #e0e0e0;
+  border-top-color: var(--orange);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error button {
+  margin-top: 12px;
+  padding: 10px 24px;
+  border: none;
+  background: var(--orange);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.hidden { display: none !important; }
+
+/* ===== Shop Header ===== */
+.shop-header {
+  text-align: center;
+  padding: 24px 0 8px;
+}
+
+.shop-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.shop-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.shop-meta {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+
+.rating { color: #f5a623; font-weight: 600; }
+
+/* ===== Card ===== */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.card-header h2 {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.badge {
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: #f0f0f0;
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+
+/* ===== Text Card ===== */
+.review-text {
+  font-size: 15px;
+  line-height: 1.8;
+  color: #333;
+  background: #fafafa;
+  padding: 14px 16px;
+  border-radius: 10px;
+  min-height: 80px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.text-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+/* ===== Buttons ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.15s;
+  min-height: 44px;
+  padding: 0 16px;
+}
+
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  flex: 1;
+  background: var(--orange);
+  color: #fff;
+}
+
+.btn-outline {
+  background: #f0f0f0;
+  color: var(--text);
+}
+
+.btn-primary-outline {
+  width: 100%;
+  background: #fff;
+  color: var(--orange);
+  border: 2px solid var(--orange);
+}
+
+/* ===== Image Grid ===== */
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.image-grid img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  background: #e0e0e0;
+}
+
+.image-grid img:active { opacity: 0.7; }
+
+.image-actions { margin-top: 14px; }
+
+/* ===== Platform Buttons ===== */
+.action-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-platform {
+  width: 100%;
+  padding: 16px;
+  font-size: 17px;
+  font-weight: 600;
+  border-radius: 12px;
+  text-decoration: none;
+  color: #fff;
+  min-height: 52px;
+}
+
+.btn-meituan { background: linear-gradient(135deg, #FFD100, #FF8C00); }
+
+.btn-douyin { background: #1a1a1a; }
+
+/* ===== Footer ===== */
+.footer {
+  text-align: center;
+  font-size: 12px;
+  color: #bbb;
+  padding-top: 8px;
+}
+
+/* ===== Image Preview ===== */
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.preview-overlay img {
+  max-width: 90vw;
+  max-height: 80vh;
+  border-radius: 8px;
+}
+
+.preview-close {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  font-size: 36px;
+  color: #fff;
+  cursor: pointer;
+}
+
+/* ===== Toast ===== */
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.8);
+  color: #fff;
+  padding: 10px 24px;
+  border-radius: 20px;
+  font-size: 14px;
+  z-index: 2000;
+  pointer-events: none;
+  animation: toastIn 0.3s ease;
+}
+
+.toast.hidden { display: none; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ===== Copy feedback on button ===== */
+.btn-copied {
+  background: var(--green) !important;
+  color: #fff !important;
+  border-color: var(--green) !important;
+}

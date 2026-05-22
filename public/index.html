@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>评价助手</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- 加载中 -->
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>加载中...</p>
+  </div>
+
+  <!-- 错误提示 -->
+  <div id="error" class="error hidden">
+    <p>加载失败，请重试</p>
+    <button onclick="location.reload()">重新加载</button>
+  </div>
+
+  <!-- 主内容 -->
+  <main id="app" class="hidden">
+
+    <!-- 店铺信息 -->
+    <header class="shop-header">
+      <div class="shop-icon">🍽️</div>
+      <h1 id="shopName"></h1>
+      <div class="shop-meta">
+        <span class="rating">⭐ <span id="shopRating"></span></span>
+        <span class="price">人均 ¥<span id="shopPrice"></span></span>
+      </div>
+    </header>
+
+    <!-- 文案区 -->
+    <section class="card text-card">
+      <div class="card-header">
+        <h2>建议文案</h2>
+        <span class="badge" id="textIndex"></span>
+      </div>
+      <p id="reviewText" class="review-text"></p>
+      <div class="text-actions">
+        <button id="btnShuffle" class="btn btn-outline">
+          🔄 换一条
+        </button>
+        <button id="btnCopy" class="btn btn-primary">
+          📋 一键复制
+        </button>
+      </div>
+    </section>
+
+    <!-- 图片区 -->
+    <section class="card image-card">
+      <div class="card-header">
+        <h2>配图</h2>
+        <span class="badge" id="imageCount"></span>
+      </div>
+      <div id="imageGrid" class="image-grid"></div>
+      <div class="image-actions">
+        <button id="btnSaveAll" class="btn btn-primary-outline">
+          📥 保存全部图片
+        </button>
+      </div>
+    </section>
+
+    <!-- 跳转按钮 -->
+    <section class="action-section">
+      <a id="linkMeituan" class="btn btn-platform btn-meituan" target="_blank">
+        🚀 去美团评价
+      </a>
+      <a id="linkDouyin" class="btn btn-platform btn-douyin" target="_blank">
+        🎵 去抖音评价
+      </a>
+    </section>
+
+    <!-- 底部提示 -->
+    <footer class="footer">
+      <p>长按图片可逐个保存 · 文案已去重</p>
+    </footer>
+
+  </main>
+
+  <!-- 图片预览弹窗 -->
+  <div id="imagePreview" class="preview-overlay hidden">
+    <span class="preview-close">&times;</span>
+    <img id="previewImage" src="" alt="预览图片">
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
