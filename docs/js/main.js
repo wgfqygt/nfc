@@ -20,6 +20,7 @@
         .from('shops')
         .select('*, reviews(*), images(*)')
         .eq('slug', shopId)
+        .eq('is_active', true)
         .maybeSingle();
 
       if (error || !shop) throw new Error(error?.message || '店铺不存在');

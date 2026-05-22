@@ -213,6 +213,10 @@ body{
     <div class="dashboard-header">
       <h2 id="shopCountLabel">共 0 家店铺</h2>
     </div>
+    <div id="filterBar" class="hidden" style="display:flex;gap:0;margin-bottom:12px;border-radius:8px;overflow:hidden;border:1.5px solid var(--border);">
+      <button id="btnFilterActive" class="filter-btn" style="flex:1;padding:8px;border:none;background:var(--orange);color:#fff;font-size:13px;cursor:pointer;">已上架</button>
+      <button id="btnFilterInactive" class="filter-btn" style="flex:1;padding:8px;border:none;background:#fff;color:var(--text2);font-size:13px;cursor:pointer;">已下架</button>
+    </div>
     <div id="shopList"></div>
     <button class="btn-create-shop" id="btnNewShop">+ 创建新店铺</button>
     <button class="btn-create-shop" id="btnImportGgb" style="border-color:var(--orange);color:var(--orange);margin-top:8px;">📥 一键导入 ggb 店铺（塔斯汀）</button>
@@ -254,7 +258,8 @@ body{
     <button class="btn-back" id="btnBack">← 返回</button>
     <h1 id="editorTitle">编辑店铺</h1>
     <div class="toolbar-right">
-      <button class="btn-delete" id="btnDelete">删除</button>
+      <button class="btn-outline-light" id="btnToggleActive">下架</button>
+              <button class="btn-delete" id="btnDelete">删除</button>
       <button class="btn-save" id="btnSave">💾 保存</button>
     </div>
   </div>

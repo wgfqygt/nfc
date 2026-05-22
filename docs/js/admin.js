@@ -113,9 +113,11 @@
       isAdmin = data?.role === 'admin';
     } catch { isAdmin = false; }
     if (isAdmin) {
+      $('#filterBar').classList.remove('hidden');
       $('#keyManageSection').classList.remove('hidden');
       loadKeys();
     } else {
+      $('#filterBar').classList.add('hidden');
       $('#keyManageSection').classList.add('hidden');
     }
   }
@@ -129,6 +131,13 @@
     $('#editorTitle').textContent = isNew ? '创建店铺' : '编辑店铺';
     $('#editSlug').readOnly = !isNew;
     $('#btnDelete').style.display = isNew ? 'none' : '';
+    // 上下架按钮（仅编辑已有店铺，仅 admin 可见）
+    if (!isNew && isAdmin) {
+      $('#btnToggleActive').style.display = '';
+      $('#btnToggleActive').textContent = shop.is_active ? '下架' : '上架';
+    } else {
+      $('#btnToggleActive').style.display = 'none';
+    }
 
     // 填充表单
     $('#editSlug').value = shop.slug || '';
@@ -151,13 +160,21 @@
   }
 
   // ═══ 店铺列表 ═══
+  let currentFilter = 'active'; // 'active' | 'inactive'
+
   async function loadShops() {
     const { data: { user } } = await db.auth.getUser();
-    const { data: shops, error } = await db
-      .from('shops')
-      .select('*')
-      .eq('owner_id', user.id)
-      .order('updated_at', { ascending: false });
+    let query = db.from('shops').select('*');
+
+    if (isAdmin) {
+      // 管理员看所有店铺，按上下架筛选
+      query = query.eq('is_active', currentFilter === 'active');
+    } else {
+      // 商家看自己的店铺，不分筛选，但排序：上架在前、下架在后
+      query = query.eq('owner_id', user.id);
+    }
+
+    const { data: shops, error } = await query.order('updated_at', { ascending: false });
 
     if (error) {
       showToast('加载店铺列表失败: ' + error.message, false);
@@ -170,7 +187,17 @@
   function renderShopList(shops) {
     const list = $('#shopList');
     const emptyState = $('#emptyState');
-    $('#shopCountLabel').textContent = `共 ${shops.length} 家店铺`;
+
+    if (!isAdmin) {
+      // 商家：上架在前，下架沉底
+      shops.sort((a, b) => {
+        if (a.is_active !== b.is_active) return a.is_active ? -1 : 1;
+        return new Date(b.updated_at) - new Date(a.updated_at);
+      });
+    }
+
+    const label = isAdmin ? (currentFilter === 'active' ? '已上架' : '已下架') : '';
+    $('#shopCountLabel').textContent = `共 ${shops.length} 家店铺${label ? '（' + label + '）' : ''}`;
 
     if (shops.length === 0) {
       list.innerHTML = '';
@@ -179,10 +206,13 @@
     }
 
     emptyState.classList.add('hidden');
-    list.innerHTML = shops.map(shop => `
-      <div class="shop-card" data-id="${shop.id}">
+    list.innerHTML = shops.map(shop => {
+      const inactiveBadge = !shop.is_active ? '<span style="font-size:11px;background:#eee;color:#999;padding:2px 8px;border-radius:4px;margin-left:6px;">已下架</span>' : '';
+      const dimmed = !shop.is_active ? 'opacity:0.6;' : '';
+      return `
+      <div class="shop-card" data-id="${shop.id}" style="${dimmed}">
         <div class="shop-info">
-          <h3>${escapeHtml(shop.name)}</h3>
+          <h3>${escapeHtml(shop.name)}${inactiveBadge}</h3>
           <div class="meta">
             <span>⭐ ${escapeHtml(shop.rating || '-')}</span>
             <span>¥${escapeHtml(shop.avg_price || '-')}</span>
@@ -191,7 +221,7 @@
         </div>
         <div class="arrow">›</div>
       </div>
-    `).join('');
+    `}).join('');
 
     // 点击进入编辑
     list.querySelectorAll('.shop-card').forEach(card => {
@@ -201,6 +231,21 @@
         await loadShop(id);
       });
     });
+  }
+
+  // ═══ 筛选切换（仅 admin） ═══
+  function switchFilter(filter) {
+    currentFilter = filter;
+    const activeBtn = $('#btnFilterActive');
+    const inactiveBtn = $('#btnFilterInactive');
+    if (filter === 'active') {
+      activeBtn.style.background = 'var(--orange)'; activeBtn.style.color = '#fff';
+      inactiveBtn.style.background = '#fff'; inactiveBtn.style.color = 'var(--text2)';
+    } else {
+      inactiveBtn.style.background = 'var(--orange)'; inactiveBtn.style.color = '#fff';
+      activeBtn.style.background = '#fff'; activeBtn.style.color = 'var(--text2)';
+    }
+    loadShops();
   }
 
   // ═══ 编辑器 - 加载店铺 ═══
@@ -610,6 +655,28 @@
     return d.innerHTML;
   }
 
+  // ═══ 上下架 ═══
+  async function toggleShopActive() {
+    if (!currentShop || !currentShop.id) return;
+    const newState = !currentShop.is_active;
+    const action = newState ? '上架' : '下架';
+
+    if (!confirm(`确定${action}店铺「${currentShop.name}」吗？`)) return;
+
+    const { error } = await db.from('shops')
+      .update({ is_active: newState })
+      .eq('id', currentShop.id);
+
+    if (error) {
+      showToast(`${action}失败: ` + error.message, false);
+      return;
+    }
+
+    currentShop.is_active = newState;
+    $('#btnToggleActive').textContent = newState ? '下架' : '上架';
+    showToast(`已${action}`, true);
+  }
+
   // ═══ 密钥管理 ═══
   async function generateKey() {
     const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -725,6 +792,13 @@
 
   // 密钥管理
   $('#btnGenKey').addEventListener('click', generateKey);
+
+  // 筛选切换
+  $('#btnFilterActive').addEventListener('click', () => switchFilter('active'));
+  $('#btnFilterInactive').addEventListener('click', () => switchFilter('inactive'));
+
+  // 上下架
+  $('#btnToggleActive').addEventListener('click', toggleShopActive);
 
   $('#btnBack').addEventListener('click', () => { showDashboard(); loadShops(); });
   $('#btnSave').addEventListener('click', saveShop);

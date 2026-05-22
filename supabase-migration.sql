@@ -130,3 +130,6 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- 12. 管理员设置（你注册后在 SQL Editor 执行下面两行，替换你的 UUID）
 -- SELECT auth.uid();  -- 先查你的 ID
 -- INSERT INTO user_roles (user_id, role) VALUES ('你的UUID', 'admin');
+
+-- 13. 店铺上下架
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
