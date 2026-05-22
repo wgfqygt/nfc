@@ -140,6 +140,7 @@
     const meituan = $('#linkMeituan');
     const douyin = $('#linkDouyin');
 
+    // 美团：如果是 URL 就用链接，否则隐藏
     if (links.meituanReview) {
       meituan.href = links.meituanReview;
       meituan.style.display = '';
@@ -147,12 +148,66 @@
       meituan.style.display = 'none';
     }
 
+    // 抖音：判断是 URL 还是口令
     if (links.douyinReview) {
-      douyin.href = links.douyinReview;
+      const val = links.douyinReview;
+      const isUrl = /^https?:\/\//i.test(val);
+
+      if (isUrl) {
+        // 普通链接，直接跳转
+        douyin.href = val;
+        douyin.textContent = '🎵 去抖音评价';
+        douyin.onclick = null;
+      } else {
+        // 抖音口令，复制+唤起 App
+        douyin.removeAttribute('href');
+        douyin.textContent = '🎵 复制口令并打开抖音';
+        douyin.onclick = (e) => {
+          e.preventDefault();
+          copyAndOpenDouyin(val);
+        };
+      }
       douyin.style.display = '';
     } else {
       douyin.style.display = 'none';
     }
+  }
+
+  async function copyAndOpenDouyin(password) {
+    // 第一步：复制口令到剪贴板
+    try {
+      await navigator.clipboard.writeText(password);
+      showToast('口令已复制，正在打开抖音...');
+    } catch {
+      // 降级：用 textarea 兜底复制
+      const ta = document.createElement('textarea');
+      ta.value = password;
+      ta.style.position = 'fixed'; ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      showToast('口令已复制，正在打开抖音...');
+    }
+
+    // 第二步：尝试唤起抖音 App
+    setTimeout(() => {
+      const schemes = ['snssdk1128://', 'douyin://'];
+      let opened = false;
+
+      for (const scheme of schemes) {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = scheme;
+        document.body.appendChild(iframe);
+        setTimeout(() => document.body.removeChild(iframe), 2000);
+      }
+
+      // 如果 2.5 秒后还在当前页，说明没装 App，提示手动打开
+      setTimeout(() => {
+        showToast('请手动打开抖音App，口令已复制，会自动弹窗');
+      }, 2500);
+    }, 300);
   }
 
   // ── Toast ──
