@@ -10,19 +10,19 @@
 
   // ── 初始化 ──
   async function init() {
-    if (typeof supabase === 'undefined') {
+    if (typeof db === 'undefined') {
       showToast('请先在 js/supabase.js 中配置 Supabase 连接信息', false);
       return;
     }
 
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await db.auth.getSession();
     if (session) {
       showDashboard();
       loadShops();
     }
 
     // 监听认证状态变化
-    supabase.auth.onAuthStateChange((event, session) => {
+    db.auth.onAuthStateChange((event, session) => {
       if (session) {
         showDashboard();
         loadShops();
@@ -48,7 +48,7 @@
     }
 
     $('#authError').classList.add('hidden');
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
     if (error) {
       showAuthError(error.message === 'Invalid login credentials'
         ? '邮箱或密码错误' : error.message);
@@ -68,7 +68,7 @@
     }
 
     $('#authError').classList.add('hidden');
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await db.auth.signUp({ email, password });
     if (error) {
       showAuthError(error.message.includes('already registered')
         ? '该邮箱已注册，请直接登录' : error.message);
@@ -78,7 +78,7 @@
   }
 
   async function handleLogout() {
-    await supabase.auth.signOut();
+    await db.auth.signOut();
   }
 
   // ═══ 视图切换 ═══
@@ -94,10 +94,10 @@
     $('#viewLogin').classList.add('hidden');
     $('#viewDashboard').classList.remove('hidden');
     $('#viewEditor').classList.add('hidden');
-    $('#displayEmail').textContent = supabase.auth.getUser().then(r =>
+    $('#displayEmail').textContent = db.auth.getUser().then(r =>
       r.data.user?.email || '');
     // 异步获取 email
-    supabase.auth.getUser().then(r => {
+    db.auth.getUser().then(r => {
       if (r.data.user) $('#displayEmail').textContent = r.data.user.email;
     });
     currentShop = null;
@@ -298,7 +298,7 @@
       // 1. Upsert 店铺
       if (isNewShop) {
         // 检查 slug 唯一性
-        const { data: existing } = await supabase.from('shops').select('id').eq('slug', slug).maybeSingle();
+        const { data: existing } = await db.from('shops').select('id').eq('slug', slug).maybeSingle();
         if (existing) {
           showToast('该店铺 ID 已被使用，请换一个', false);
           $('#btnSave').textContent = '💾 保存';
@@ -311,7 +311,7 @@
           .insert({
             slug, name, rating, avg_price: avgPrice,
             meituan_url: meituanUrl, douyin_url: douyinUrl,
-            owner_id: (await supabase.auth.getUser()).data.user.id
+            owner_id: (await db.auth.getUser()).data.user.id
           })
           .select('id')
           .single();
@@ -336,14 +336,14 @@
       }
 
       // 2. 保存评价（删旧插新）
-      await supabase.from('reviews').delete().eq('shop_id', shopId);
+      await db.from('reviews').delete().eq('shop_id', shopId);
       if (texts.length > 0) {
         const reviewRows = texts.map((text, i) => ({
           shop_id: shopId,
           text,
           sort_order: i
         }));
-        await supabase.from('reviews').insert(reviewRows);
+        await db.from('reviews').insert(reviewRows);
       }
 
       // 3. 保存图片
@@ -380,7 +380,7 @@
 
     // 删除存储中不用的文件
     if (pathsToDelete.length > 0) {
-      await supabase.storage.from('shop-images').remove(pathsToDelete);
+      await db.storage.from('shop-images').remove(pathsToDelete);
     }
 
     // 删除不用的 DB 记录
@@ -388,7 +388,7 @@
       .filter(img => !keptIds.has(img.id))
       .map(img => img.id);
     if (idsToDelete.length > 0) {
-      await supabase.from('images').delete().in('id', idsToDelete);
+      await db.from('images').delete().in('id', idsToDelete);
     }
 
     // 上传新文件
@@ -399,12 +399,12 @@
         const safeName = entry.file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
         const fileName = `${Date.now()}_${safeName}`;
         const storagePath = `${slug}/${fileName}`;
-        const { error: uploadErr } = await supabase.storage
+        const { error: uploadErr } = await db.storage
           .from('shop-images')
           .upload(storagePath, entry.file);
 
         if (!uploadErr) {
-          await supabase.from('images').insert({
+          await db.from('images').insert({
             shop_id: shopId,
             file_path: storagePath,
             sort_order: sortOrder++
@@ -412,7 +412,7 @@
         }
       } else if (entry.isExisting) {
         // 已存在的图片，更新 sort_order
-        await supabase.from('images')
+        await db.from('images')
           .update({ sort_order: sortOrder++ })
           .eq('id', entry.id);
       }
@@ -433,11 +433,11 @@
 
       if (images && images.length > 0) {
         const paths = images.map(img => img.file_path);
-        await supabase.storage.from('shop-images').remove(paths);
+        await db.storage.from('shop-images').remove(paths);
       }
 
       // 删除店铺（级联删除 reviews 和 images）
-      await supabase.from('shops').delete().eq('id', currentShop.id);
+      await db.from('shops').delete().eq('id', currentShop.id);
 
       showToast('店铺已删除', true);
       showDashboard();

@@ -12,9 +12,9 @@
     const shopId = new URLSearchParams(location.search).get('shop') || 'demo';
 
     // 优先从 Supabase 加载
-    if (typeof supabase !== 'undefined') {
+    if (typeof db !== 'undefined') {
       try {
-        const { data: shop, error } = await supabase
+        const { data: shop, error } = await db
           .from('shops')
           .select('*, reviews(*), images(*)')
           .eq('slug', shopId)
