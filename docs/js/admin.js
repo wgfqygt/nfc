@@ -5,6 +5,8 @@
   // ── 状态 ──
   let currentShop = null; // { id, slug, name, rating, avg_price, meituan_url, douyin_url }
   let isNewShop = false;
+  let pendingShopKey = null; // 创建店铺前验证过的密钥
+  let isAdmin = false;
   // imageStore: Map<key, { id?, file?, dataUrl, storagePath?, isExisting: bool }>
   let imageStore = new Map();
 
@@ -73,6 +75,8 @@
       showAuthError(error.message.includes('already registered')
         ? '该邮箱已注册，请直接登录' : error.message);
     } else {
+      // 分配 merchant 角色
+      await db.rpc('assign_merchant_role');
       showToast('注册成功！已自动登录', true);
     }
   }
@@ -94,14 +98,26 @@
     $('#viewLogin').classList.add('hidden');
     $('#viewDashboard').classList.remove('hidden');
     $('#viewEditor').classList.add('hidden');
-    $('#displayEmail').textContent = db.auth.getUser().then(r =>
-      r.data.user?.email || '');
-    // 异步获取 email
     db.auth.getUser().then(r => {
       if (r.data.user) $('#displayEmail').textContent = r.data.user.email;
     });
     currentShop = null;
     isNewShop = false;
+    pendingShopKey = null;
+    checkAdmin();
+  }
+
+  async function checkAdmin() {
+    try {
+      const { data } = await db.from('user_roles').select('role').single();
+      isAdmin = data?.role === 'admin';
+    } catch { isAdmin = false; }
+    if (isAdmin) {
+      $('#keyManageSection').classList.remove('hidden');
+      loadKeys();
+    } else {
+      $('#keyManageSection').classList.add('hidden');
+    }
   }
 
   function showEditor(shop, isNew) {
@@ -251,6 +267,43 @@
 
   // ═══ 编辑器 - 新建店铺 ═══
   function initNewShop() {
+    // 弹出密钥验证弹窗
+    $('#keyModal').classList.remove('hidden');
+    $('#keyInput').value = '';
+    $('#keyError').classList.add('hidden');
+    setTimeout(() => $('#keyInput').focus(), 100);
+  }
+
+  // ═══ 密钥弹窗 ═══
+  async function handleKeyConfirm() {
+    const code = $('#keyInput').value.trim().toUpperCase();
+    if (!code) {
+      $('#keyError').textContent = '请输入密钥';
+      $('#keyError').classList.remove('hidden');
+      return;
+    }
+
+    // 验证密钥是否存在且未使用
+    const { data: keyData } = await db.from('shop_keys')
+      .select('is_used')
+      .eq('code', code)
+      .maybeSingle();
+
+    if (!keyData) {
+      $('#keyError').textContent = '密钥不存在';
+      $('#keyError').classList.remove('hidden');
+      return;
+    }
+    if (keyData.is_used) {
+      $('#keyError').textContent = '该密钥已被使用';
+      $('#keyError').classList.remove('hidden');
+      return;
+    }
+
+    // 有效，暂存密钥，进入编辑器
+    pendingShopKey = code;
+    $('#keyModal').classList.add('hidden');
+
     showEditor({
       id: null,
       slug: '',
@@ -267,6 +320,11 @@
 
     imageStore.clear();
     renderImageList();
+  }
+
+  function handleKeyCancel() {
+    $('#keyModal').classList.add('hidden');
+    pendingShopKey = null;
   }
 
   // ═══ 编辑器 - 保存 ═══
@@ -319,6 +377,19 @@
         if (insertErr) throw insertErr;
         shopId = newShop.id;
         currentShop.id = shopId;
+
+        // 兑换密钥
+        if (pendingShopKey) {
+          const { data: redeemed } = await db.rpc('redeem_shop_key', {
+            p_code: pendingShopKey,
+            p_shop_id: shopId
+          });
+          if (!redeemed) {
+            showToast('密钥兑换失败，店铺已创建但密钥未消耗', false);
+          }
+          pendingShopKey = null;
+        }
+
         isNewShop = false;
         $('#editSlug').readOnly = true;
         $('#btnDelete').style.display = '';
@@ -537,6 +608,45 @@
     return d.innerHTML;
   }
 
+  // ═══ 密钥管理 ═══
+  async function generateKey() {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    const code = Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+
+    const { data: { user } } = await db.auth.getUser();
+    const { error } = await db.from('shop_keys').insert({
+      code,
+      created_by: user.id
+    });
+
+    if (error) {
+      showToast('生成失败: ' + error.message, false);
+      return;
+    }
+
+    showToast('密钥已生成: ' + code, true);
+    loadKeys();
+  }
+
+  async function loadKeys() {
+    const { data: keys, error } = await db.from('shop_keys')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (error || !keys || keys.length === 0) {
+      $('#keyList').innerHTML = '<p style="color:var(--text2);">暂无密钥</p>';
+      return;
+    }
+
+    $('#keyList').innerHTML = keys.map(k => `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0;">
+        <code style="font-size:14px;letter-spacing:1px;">${k.code}</code>
+        <span style="font-size:12px;color:${k.is_used ? 'var(--green)' : 'var(--text2)'};">${k.is_used ? '✅ 已用' : '⏳ 未用'}</span>
+      </div>
+    `).join('');
+  }
+
   // ═══ 一键导入 ggb 店铺 ═══
   async function importGgbShop() {
     $('#btnImportGgb').textContent = '导入中...';
@@ -603,6 +713,16 @@
   $('#btnLogout').addEventListener('click', handleLogout);
   $('#btnNewShop').addEventListener('click', initNewShop);
   $('#btnImportGgb').addEventListener('click', importGgbShop);
+
+  // 密钥弹窗
+  $('#btnKeyConfirm').addEventListener('click', handleKeyConfirm);
+  $('#btnKeyCancel').addEventListener('click', handleKeyCancel);
+  $('#keyInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleKeyConfirm();
+  });
+
+  // 密钥管理
+  $('#btnGenKey').addEventListener('click', generateKey);
 
   $('#btnBack').addEventListener('click', () => { showDashboard(); loadShops(); });
   $('#btnSave').addEventListener('click', saveShop);

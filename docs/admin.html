@@ -158,6 +158,17 @@ body{
 .toast.hidden{opacity:0;}
 .toast.success{background:var(--green);}
 
+/* key modal */
+.key-modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:400;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.key-modal-overlay.hidden{display:none;}
+.key-modal-card{
+  background:#fff;border-radius:16px;padding:28px 24px;width:100%;max-width:360px;
+  text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.25);
+}
+
 @media(max-width:500px){
   .container{padding:12px;}
   .section{padding:16px;}
@@ -209,6 +220,30 @@ body{
       <div class="icon">📝</div>
       <p>还没有店铺</p>
       <p style="font-size:13px;color:var(--text2);margin-top:4px;">点击上方按钮创建第一家</p>
+    </div>
+
+    <!-- 密钥管理（仅 admin 可见） -->
+    <div class="section hidden" id="keyManageSection" style="margin-top:24px;">
+      <h3>🔑 密钥管理 <span>一个密创建一个店铺</span></h3>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button class="btn-save" id="btnGenKey" style="font-size:14px;padding:10px 20px;">生成新密钥</button>
+      </div>
+      <div id="keyList" style="font-size:13px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ 密钥弹窗 ═══ -->
+<div id="keyModal" class="key-modal-overlay hidden">
+  <div class="key-modal-card">
+    <p style="font-size:36px;margin-bottom:8px;">🔑</p>
+    <h3>创建店铺需要密钥</h3>
+    <p style="font-size:13px;color:var(--text2);margin:8px 0 16px;">请输入有效的店铺密钥，一个密创建一个店铺</p>
+    <input type="text" id="keyInput" placeholder="输入密钥" style="width:100%;padding:12px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;text-align:center;font-family:monospace;letter-spacing:2px;" autocomplete="off">
+    <p class="error-text hidden" id="keyError" style="margin-top:8px;"></p>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="btn-back" id="btnKeyCancel" style="flex:1;">取消</button>
+      <button class="btn-save" id="btnKeyConfirm" style="flex:1;">确认创建</button>
     </div>
   </div>
 </div>

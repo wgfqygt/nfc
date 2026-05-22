@@ -75,3 +75,58 @@ $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER shops_updated_at BEFORE UPDATE ON shops
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ── 邀请码/店铺密钥系统 ──
+
+-- 8. 用户角色表（admin 可生成密钥）
+CREATE TABLE user_roles (
+  user_id UUID REFERENCES auth.users(id) PRIMARY KEY,
+  role TEXT NOT NULL DEFAULT 'merchant'
+);
+ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "user_read_own_role" ON user_roles FOR SELECT USING (auth.uid() = user_id);
+
+-- 9. 店铺密钥表（一个密创建一个店铺）
+CREATE TABLE shop_keys (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL,
+  is_used BOOLEAN DEFAULT false,
+  used_for_shop_id UUID REFERENCES shops(id),
+  used_by UUID REFERENCES auth.users(id),
+  used_at TIMESTAMPTZ,
+  created_by UUID REFERENCES auth.users(id),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE shop_keys ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public_read_keys" ON shop_keys FOR SELECT USING (true);
+CREATE POLICY "admin_manage_keys" ON shop_keys
+  FOR ALL USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'))
+  WITH CHECK (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+
+-- 10. 兑换店铺密钥（SECURITY DEFINER 绕过 RLS）
+CREATE OR REPLACE FUNCTION redeem_shop_key(p_code TEXT, p_shop_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_key RECORD;
+BEGIN
+  SELECT * INTO v_key FROM shop_keys WHERE code = p_code AND is_used = false;
+  IF NOT FOUND THEN
+    RETURN false;
+  END IF;
+  UPDATE shop_keys SET is_used = true, used_by = auth.uid(), used_for_shop_id = p_shop_id, used_at = now()
+  WHERE id = v_key.id;
+  RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 11. 注册后分配 merchant 角色
+CREATE OR REPLACE FUNCTION assign_merchant_role()
+RETURNS VOID AS $$
+BEGIN
+  INSERT INTO user_roles (user_id, role) VALUES (auth.uid(), 'merchant') ON CONFLICT DO NOTHING;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 12. 管理员设置（你注册后在 SQL Editor 执行下面两行，替换你的 UUID）
+-- SELECT auth.uid();  -- 先查你的 ID
+-- INSERT INTO user_roles (user_id, role) VALUES ('你的UUID', 'admin');
