@@ -174,12 +174,14 @@
   }
 
   async function copyAndOpenDouyin(password) {
+    // 记住当前评价文案，后面要恢复
+    const reviewText = shopConfig.texts[currentTextIdx];
+
     // 第一步：复制口令到剪贴板
     try {
       await navigator.clipboard.writeText(password);
-      showToast('口令已复制，正在打开抖音...');
+      showToast('口令已复制，正在打开抖音（6秒后自动恢复文案到剪贴板）');
     } catch {
-      // 降级：用 textarea 兜底复制
       const ta = document.createElement('textarea');
       ta.value = password;
       ta.style.position = 'fixed'; ta.style.left = '-9999px';
@@ -192,22 +194,21 @@
 
     // 第二步：尝试唤起抖音 App
     setTimeout(() => {
-      const schemes = ['snssdk1128://', 'douyin://'];
-      let opened = false;
-
-      for (const scheme of schemes) {
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = scheme;
-        document.body.appendChild(iframe);
-        setTimeout(() => document.body.removeChild(iframe), 2000);
-      }
-
-      // 如果 2.5 秒后还在当前页，说明没装 App，提示手动打开
-      setTimeout(() => {
-        showToast('请手动打开抖音App，口令已复制，会自动弹窗');
-      }, 2500);
+      const scheme = 'snssdk1128://';
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = scheme;
+      document.body.appendChild(iframe);
+      setTimeout(() => document.body.removeChild(iframe), 2000);
     }, 300);
+
+    // 第三步：6 秒后恢复评价文案到剪贴板
+    // 这时用户已进入抖音，点「写评价」就能粘贴
+    setTimeout(async () => {
+      try {
+        await navigator.clipboard.writeText(reviewText);
+      } catch {/* 静默失败 */}
+    }, 6000);
   }
 
   // ── Toast ──
