@@ -587,19 +587,23 @@
     if (!confirm(`确定删除店铺「${currentShop.name}」吗？\n所有文案和图片将一并删除，不可恢复。`)) return;
 
     try {
-      // 删除 storage 中的图片
-      const { data: images } = await db
-        .from('images')
-        .select('file_path')
-        .eq('shop_id', currentShop.id);
-
-      if (images && images.length > 0) {
-        const paths = images.map(img => img.file_path);
-        await db.storage.from('shop-images').remove(paths);
+      // 删除 storage 中的图片（尽力而为，失败不阻断）
+      try {
+        const { data: images } = await db
+          .from('images')
+          .select('file_path')
+          .eq('shop_id', currentShop.id);
+        if (images && images.length > 0) {
+          const paths = images.map(img => img.file_path);
+          await db.storage.from('shop-images').remove(paths);
+        }
+      } catch (e) {
+        console.warn('存储文件删除失败（已忽略）:', e.message);
       }
 
       // 删除店铺（级联删除 reviews 和 images）
-      await db.from('shops').delete().eq('id', currentShop.id);
+      const { error } = await db.from('shops').delete().eq('id', currentShop.id);
+      if (error) throw error;
 
       showToast('店铺已删除', true);
       showDashboard();
