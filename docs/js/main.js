@@ -5,39 +5,26 @@
   // ── 状态 ──
   let shopConfig = null;
   let currentTextIdx = 0;
-  let isSupabaseMode = false; // 数据来源是否为 Supabase
-
   // ── 初始化 ──
   async function init() {
     const shopId = new URLSearchParams(location.search).get('shop') || 'demo';
 
-    // 优先从 Supabase 加载
-    if (typeof db !== 'undefined') {
-      try {
-        const { data: shop, error } = await db
-          .from('shops')
-          .select('*, reviews(*), images(*)')
-          .eq('slug', shopId)
-          .maybeSingle();
-
-        if (!error && shop) {
-          shopConfig = transformSupabaseShop(shop);
-          isSupabaseMode = true;
-          currentTextIdx = Math.floor(Math.random() * shopConfig.texts.length);
-          render();
-          return;
-        }
-      } catch (e) {
-        console.warn('Supabase 加载失败，降级到静态 JSON:', e.message);
-      }
+    if (typeof db === 'undefined') {
+      $('#loading').classList.add('hidden');
+      $('#error').classList.remove('hidden');
+      return;
     }
 
-    // 降级：从静态 JSON 加载
     try {
-      const res = await fetch(`shops/${shopId}/config.json`);
-      if (!res.ok) throw new Error('config not found');
-      shopConfig = await res.json();
-      isSupabaseMode = false;
+      const { data: shop, error } = await db
+        .from('shops')
+        .select('*, reviews(*), images(*)')
+        .eq('slug', shopId)
+        .maybeSingle();
+
+      if (error || !shop) throw new Error(error?.message || '店铺不存在');
+
+      shopConfig = transformSupabaseShop(shop);
       currentTextIdx = Math.floor(Math.random() * shopConfig.texts.length);
       render();
     } catch (err) {
@@ -69,11 +56,7 @@
 
   // ── 获取图片 URL ──
   function getImageUrl(path) {
-    if (isSupabaseMode && typeof SUPABASE_URL !== 'undefined') {
-      return `${SUPABASE_URL}/storage/v1/object/public/shop-images/${path}`;
-    }
-    const shopId = new URLSearchParams(location.search).get('shop') || 'demo';
-    return `shops/${shopId}/images/${path}`;
+    return `${SUPABASE_URL}/storage/v1/object/public/shop-images/${path}`;
   }
 
   // ── 渲染 ──
