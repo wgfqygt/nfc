@@ -152,9 +152,11 @@
 
   // ═══ 店铺列表 ═══
   async function loadShops() {
+    const { data: { user } } = await db.auth.getUser();
     const { data: shops, error } = await db
       .from('shops')
       .select('*')
+      .eq('owner_id', user.id)
       .order('updated_at', { ascending: false });
 
     if (error) {
