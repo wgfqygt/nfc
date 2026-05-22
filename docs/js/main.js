@@ -5,14 +5,39 @@
   // ── 状态 ──
   let shopConfig = null;
   let currentTextIdx = 0;
+  let isSupabaseMode = false; // 数据来源是否为 Supabase
 
   // ── 初始化 ──
   async function init() {
     const shopId = new URLSearchParams(location.search).get('shop') || 'demo';
+
+    // 优先从 Supabase 加载
+    if (typeof supabase !== 'undefined') {
+      try {
+        const { data: shop, error } = await supabase
+          .from('shops')
+          .select('*, reviews(*), images(*)')
+          .eq('slug', shopId)
+          .maybeSingle();
+
+        if (!error && shop) {
+          shopConfig = transformSupabaseShop(shop);
+          isSupabaseMode = true;
+          currentTextIdx = Math.floor(Math.random() * shopConfig.texts.length);
+          render();
+          return;
+        }
+      } catch (e) {
+        console.warn('Supabase 加载失败，降级到静态 JSON:', e.message);
+      }
+    }
+
+    // 降级：从静态 JSON 加载
     try {
       const res = await fetch(`shops/${shopId}/config.json`);
       if (!res.ok) throw new Error('config not found');
       shopConfig = await res.json();
+      isSupabaseMode = false;
       currentTextIdx = Math.floor(Math.random() * shopConfig.texts.length);
       render();
     } catch (err) {
@@ -20,6 +45,35 @@
       $('#loading').classList.add('hidden');
       $('#error').classList.remove('hidden');
     }
+  }
+
+  // ── 将 Supabase 数据转为旧格式 ──
+  function transformSupabaseShop(shop) {
+    const reviews = (shop.reviews || []).sort((a, b) => a.sort_order - b.sort_order);
+    const images = (shop.images || []).sort((a, b) => a.sort_order - b.sort_order);
+    const links = {};
+    if (shop.meituan_url) links.meituanReview = shop.meituan_url;
+    if (shop.douyin_url) links.douyinReview = shop.douyin_url;
+
+    return {
+      shop: {
+        name: shop.name,
+        rating: shop.rating || '',
+        avgPrice: shop.avg_price || ''
+      },
+      texts: reviews.map(r => r.text),
+      images: images.map(img => img.file_path),
+      links
+    };
+  }
+
+  // ── 获取图片 URL ──
+  function getImageUrl(path) {
+    if (isSupabaseMode && typeof SUPABASE_URL !== 'undefined') {
+      return `${SUPABASE_URL}/storage/v1/object/public/shop-images/${path}`;
+    }
+    const shopId = new URLSearchParams(location.search).get('shop') || 'demo';
+    return `shops/${shopId}/images/${path}`;
   }
 
   // ── 渲染 ──
@@ -64,7 +118,6 @@
         btn.classList.remove('btn-copied');
       }, 1800);
     } catch {
-      // 降级：选中文本让用户手动复制
       const range = document.createRange();
       range.selectNodeContents($('#reviewText'));
       const sel = window.getSelection();
@@ -86,12 +139,10 @@
       return;
     }
 
-    const shopId = new URLSearchParams(location.search).get('shop') || 'demo';
     grid.innerHTML = images.map((img, i) =>
-      `<img src="shops/${shopId}/images/${img}" alt="配图${i + 1}" loading="lazy" data-index="${i}">`
+      `<img src="${getImageUrl(img)}" alt="配图${i + 1}" loading="lazy" data-index="${i}">`
     ).join('');
 
-    // 点击预览
     grid.addEventListener('click', (e) => {
       if (e.target.tagName === 'IMG') {
         $('#previewImage').src = e.target.src;
@@ -109,25 +160,23 @@
   // 保存全部图片
   $('#btnSaveAll').addEventListener('click', async () => {
     const images = shopConfig.images || [];
-    const shopId = new URLSearchParams(location.search).get('shop') || 'demo';
 
     showToast(`正在保存 ${images.length} 张图片...`);
 
     for (let i = 0; i < images.length; i++) {
       try {
-        const blob = await fetch(`shops/${shopId}/images/${images[i]}`).then(r => r.blob());
+        const blob = await fetch(getImageUrl(images[i])).then(r => r.blob());
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = images[i];
+        a.download = images[i].split('/').pop(); // 取文件名
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        // 每张间隔 300ms 避免浏览器拦截
         await sleep(300);
       } catch (err) {
-        console.error(`保存 ${images[i]} 失败:`, err);
+        console.error(`保存图片失败:`, err);
       }
     }
 
@@ -140,7 +189,6 @@
     const meituan = $('#linkMeituan');
     const douyin = $('#linkDouyin');
 
-    // 美团：如果是 URL 就用链接，否则隐藏
     if (links.meituanReview) {
       meituan.href = links.meituanReview;
       meituan.style.display = '';
@@ -148,18 +196,15 @@
       meituan.style.display = 'none';
     }
 
-    // 抖音：判断是 URL 还是口令
     if (links.douyinReview) {
       const val = links.douyinReview;
       const isUrl = /^https?:\/\//i.test(val);
 
       if (isUrl) {
-        // 普通链接，直接跳转
         douyin.href = val;
         douyin.textContent = '🎵 去抖音评价';
         douyin.onclick = null;
       } else {
-        // 抖音口令，复制+唤起 App
         douyin.removeAttribute('href');
         douyin.textContent = '🎵 复制口令并打开抖音';
         douyin.onclick = (e) => {
@@ -176,7 +221,6 @@
   async function copyAndOpenDouyin(password) {
     const reviewText = shopConfig.texts[currentTextIdx];
 
-    // 第一步：复制口令到剪贴板
     try {
       await navigator.clipboard.writeText(password);
     } catch {
@@ -191,7 +235,6 @@
 
     showToast('口令已复制，正在打开抖音...');
 
-    // 第二步：打开抖音 App
     setTimeout(() => {
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
@@ -200,7 +243,6 @@
       setTimeout(() => document.body.removeChild(iframe), 2000);
     }, 300);
 
-    // 第三步：注册一次性监听——用户切回浏览器时自动复制文案
     const onVisible = async () => {
       try {
         await navigator.clipboard.writeText(reviewText);
@@ -208,7 +250,6 @@
         $('#btnCopy').textContent = '✅ 文案已就绪';
         $('#btnCopy').classList.add('btn-copied');
       } catch {
-        // 降级：弹出醒目的复制提示
         const overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;';
         overlay.id = 'clipboard-helper';
@@ -237,16 +278,14 @@
       }
     };
 
-    // 监听页面重新可见（用户从抖音切回来）
     const handleVisibility = () => {
       if (!document.hidden) {
         document.removeEventListener('visibilitychange', handleVisibility);
-        setTimeout(onVisible, 500); // 等浏览器稳定再执行
+        setTimeout(onVisible, 500);
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
 
-    // 兜底：30 秒后还没有切回来就取消监听
     setTimeout(() => {
       document.removeEventListener('visibilitychange', handleVisibility);
     }, 30000);
