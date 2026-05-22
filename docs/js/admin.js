@@ -209,6 +209,13 @@
     list.innerHTML = shops.map(shop => {
       const inactiveBadge = !shop.is_active ? '<span style="font-size:11px;background:#eee;color:#999;padding:2px 8px;border-radius:4px;margin-left:6px;">已下架</span>' : '';
       const dimmed = !shop.is_active ? 'opacity:0.6;' : '';
+      const ownerShort = shop.owner_id ? shop.owner_id.slice(0, 8) : '';
+      const toggleBtn = isAdmin
+        ? `<button class="shop-toggle-btn" data-id="${shop.id}" data-active="${shop.is_active}" data-name="${escapeHtml(shop.name)}" style="flex-shrink:0;padding:6px 12px;border:1.5px solid var(--border);border-radius:6px;background:#fff;font-size:12px;cursor:pointer;white-space:nowrap;">${shop.is_active ? '下架' : '上架'}</button>`
+        : '';
+      const ownerLine = isAdmin
+        ? `<span style="font-size:11px;color:#bbb;">商家: ${ownerShort}…</span>`
+        : '';
       return `
       <div class="shop-card" data-id="${shop.id}" style="${dimmed}">
         <div class="shop-info">
@@ -217,11 +224,26 @@
             <span>⭐ ${escapeHtml(shop.rating || '-')}</span>
             <span>¥${escapeHtml(shop.avg_price || '-')}</span>
             <span>ID: ${escapeHtml(shop.slug)}</span>
+            ${ownerLine}
           </div>
         </div>
+        ${toggleBtn}
         <div class="arrow">›</div>
       </div>
     `}).join('');
+
+    // 上下架按钮事件
+    list.querySelectorAll('.shop-toggle-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const shop = {
+          id: btn.dataset.id,
+          name: btn.dataset.name,
+          is_active: btn.dataset.active === 'true'
+        };
+        toggleShopActive(shop);
+      });
+    });
 
     // 点击进入编辑
     list.querySelectorAll('.shop-card').forEach(card => {
@@ -657,25 +679,32 @@
   }
 
   // ═══ 上下架 ═══
-  async function toggleShopActive() {
-    if (!currentShop || !currentShop.id) return;
-    const newState = !currentShop.is_active;
+  async function toggleShopActive(shop) {
+    // 支持从仪表盘传入 shop 对象，或从编辑器读取 currentShop
+    const target = shop || currentShop;
+    if (!target || !target.id) return;
+    const newState = !target.is_active;
     const action = newState ? '上架' : '下架';
 
-    if (!confirm(`确定${action}店铺「${currentShop.name}」吗？`)) return;
+    if (!confirm(`确定${action}店铺「${target.name}」吗？`)) return;
 
     const { error } = await db.from('shops')
       .update({ is_active: newState })
-      .eq('id', currentShop.id);
+      .eq('id', target.id);
 
     if (error) {
       showToast(`${action}失败: ` + error.message, false);
       return;
     }
 
-    currentShop.is_active = newState;
-    $('#btnToggleActive').textContent = newState ? '下架' : '上架';
+    target.is_active = newState;
+    // 更新编辑器按钮（如果编辑的是这个店铺）
+    if (currentShop && currentShop.id === target.id) {
+      $('#btnToggleActive').textContent = newState ? '下架' : '上架';
+      currentShop.is_active = newState;
+    }
     showToast(`已${action}`, true);
+    loadShops(); // 刷新列表
   }
 
   // ═══ 密钥管理 ═══
@@ -799,7 +828,7 @@
   $('#btnFilterInactive').addEventListener('click', () => switchFilter('inactive'));
 
   // 上下架
-  $('#btnToggleActive').addEventListener('click', toggleShopActive);
+  $('#btnToggleActive').addEventListener('click', () => toggleShopActive());
 
   $('#btnBack').addEventListener('click', () => { showDashboard(); loadShops(); });
   $('#btnSave').addEventListener('click', saveShop);
